@@ -28,6 +28,10 @@ func main() {
 	//rl.DisableCursor()
 	rl.SetTargetFPS(60)
 
+	dragging := false
+	initialDraggingPos := rl.Vector2{}
+	currentDraggingPos := rl.Vector2{}
+
 	for !rl.WindowShouldClose() {
 		//rl.UpdateCamera(&camera, rl.CameraFree)
 
@@ -35,15 +39,26 @@ func main() {
 		// 	camera.Target = rl.Vector3{X: 0, Y: 0, Z: 0}
 		// }
 		if rl.IsMouseButtonDown(rl.MouseLeftButton) {
-			mouseDelta := fmt.Sprintf("Mouse Delta (%0.2f, %0.2f)",
-				rl.GetMouseDelta().X,
-				rl.GetMouseDelta().Y)
+			if !dragging {
+				initialDraggingPos = rl.GetMousePosition()
+				dragging = true
+			} else {
+				currentDraggingPos = rl.GetMousePosition()
+			}
+			// TODO: Save yaw and roll (Y, Z) and add or substract based on movement and when there is no movement, this way should avoid the instant reposition of the model
+			newMatrixXYZ := rl.Vector3{Y: rl.Deg2rad * -(currentDraggingPos.X - initialDraggingPos.X), Z: rl.Deg2rad * (currentDraggingPos.Y - initialDraggingPos.Y)}
+
+			mouseDelta := fmt.Sprintf("Mouse Dragging (%0.2f, %0.2f)",
+				currentDraggingPos.X-initialDraggingPos.X,
+				currentDraggingPos.Y-initialDraggingPos.Y)
 			rl.DrawText(mouseDelta, 10, 40, 20, rl.DarkGreen)
-			card.Transform = rl.MatrixRotateXYZ(rl.Vector3{Y: rl.Deg2rad * rl.GetMouseDelta().X, Z: rl.Deg2rad * rl.GetMouseDelta().Y})
+			card.Transform = rl.MatrixRotateXYZ(newMatrixXYZ)
 		} else {
 			rl.DrawText("Mouse Delta (0.00, 0.00)", 10, 40, 20, rl.DarkGreen)
 		}
-
+		if rl.IsMouseButtonReleased(rl.MouseLeftButton) {
+			dragging = false
+		}
 		rl.BeginDrawing()
 		rl.ClearBackground(rl.LightGray)
 		rl.BeginMode3D(camera)
