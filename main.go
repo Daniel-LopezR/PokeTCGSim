@@ -29,8 +29,11 @@ func main() {
 	rl.SetTargetFPS(60)
 
 	dragging := false
+	returning := false
 	initialDraggingPos := rl.Vector2{}
 	currentDraggingPos := rl.Vector2{}
+	yaw := float32(0)
+	roll := float32(0)
 
 	for !rl.WindowShouldClose() {
 		//rl.UpdateCamera(&camera, rl.CameraFree)
@@ -38,27 +41,43 @@ func main() {
 		// if rl.IsKeyPressed('Z') {
 		// 	camera.Target = rl.Vector3{X: 0, Y: 0, Z: 0}
 		// }
-		if rl.IsMouseButtonDown(rl.MouseLeftButton) {
+		if rl.IsMouseButtonDown(rl.MouseLeftButton) && !returning {
 			if !dragging {
 				initialDraggingPos = rl.GetMousePosition()
 				dragging = true
+				returning = false
 			} else {
 				currentDraggingPos = rl.GetMousePosition()
-			}
-			// TODO: Save yaw and roll (Y, Z) and add or substract based on movement and when there is no movement, this way should avoid the instant reposition of the model
-			newMatrixXYZ := rl.Vector3{Y: rl.Deg2rad * -(currentDraggingPos.X - initialDraggingPos.X), Z: rl.Deg2rad * (currentDraggingPos.Y - initialDraggingPos.Y)}
 
-			mouseDelta := fmt.Sprintf("Mouse Dragging (%0.2f, %0.2f)",
-				currentDraggingPos.X-initialDraggingPos.X,
-				currentDraggingPos.Y-initialDraggingPos.Y)
-			rl.DrawText(mouseDelta, 10, 40, 20, rl.DarkGreen)
-			card.Transform = rl.MatrixRotateXYZ(newMatrixXYZ)
+				// This ugly code is to avoid flickering when the card is returning to 0,0,0 caused by float decimals
+				yaw = float32(int32((-(currentDraggingPos.X - initialDraggingPos.X)) / 10))
+				roll = float32(int32((currentDraggingPos.Y - initialDraggingPos.Y) / 10))
+
+			}
 		} else {
-			rl.DrawText("Mouse Delta (0.00, 0.00)", 10, 40, 20, rl.DarkGreen)
+			if yaw > 0.0 {
+				yaw -= 1
+			} else if yaw < 0.0 {
+				yaw += 1
+			}
+			if roll > 0.0 {
+				roll -= 1
+			} else if roll < 0.0 {
+				roll += 1
+			}
+			if yaw == 0.0 && roll == 0.0 {
+				returning = false
+			}
 		}
-		if rl.IsMouseButtonReleased(rl.MouseLeftButton) {
+		if rl.IsMouseButtonReleased(rl.MouseLeftButton) && dragging {
 			dragging = false
+			returning = true
+			initialDraggingPos = rl.Vector2{}
+			currentDraggingPos = rl.Vector2{}
 		}
+
+		card.Transform = rl.MatrixRotateXYZ(rl.Vector3{Y: rl.Deg2rad * yaw, Z: rl.Deg2rad * roll})
+
 		rl.BeginDrawing()
 		rl.ClearBackground(rl.LightGray)
 		rl.BeginMode3D(camera)
@@ -81,6 +100,10 @@ func main() {
 
 		rl.EndMode3D()
 		rl.DrawFPS(10, 10)
+		mouseDragging := fmt.Sprintf("Mouse Dragging (%0.2f, %0.2f)",
+			currentDraggingPos.X-initialDraggingPos.X,
+			currentDraggingPos.Y-initialDraggingPos.Y)
+		rl.DrawText(mouseDragging, 10, 40, 20, rl.DarkGreen)
 		rl.EndDrawing()
 	}
 }
